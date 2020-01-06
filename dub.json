@@ -1,0 +1,6 @@
+{
+    "name": "PokerChipRace",
+    "targetName": "PokerChipRace",
+    "targetType": "executable",
+    "targetPath": "bin"
+}
