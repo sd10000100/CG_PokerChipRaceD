@@ -1,4 +1,6 @@
 import std;
+import std.math;
+
 
 /**
  * It's the survival of the biggest!
@@ -52,6 +54,7 @@ class Entity {
 }
 
 class GameWorld{
+    int count = 0;
     int myId;
     int myChipCount;
     Entity[] entities;
@@ -60,6 +63,7 @@ class GameWorld{
     Entity[] oilEntities;
     this(int myId){
         this.myId = myId;
+        count = 0;
     }
 
     void update(){
@@ -161,9 +165,24 @@ class GameWorld{
 class Simulation{
     int currentTick = 0;
     GameWorld world;
+    Entity[] entities;
     
 
     this(GameWorld initWorld){
+        entities = new Entity[initWorld.entities.length];
+        //entities = initWorld.entities.dub;
+        for(int i=0;i<initWorld.entities.length;i++)
+        {
+        Entity newItem = new Entity(initWorld.entities[i].id,
+            initWorld.entities[i].playerId,
+            initWorld.entities[i].radius,
+            initWorld.entities[i].x,
+            initWorld.entities[i].y,
+            initWorld.entities[i].vx,
+            initWorld.entities[i].vy);
+            entities[i] = newItem;
+        }
+        // entities
         world = initWorld;//[0: initWorld];
         currentTick++;
     }
@@ -216,42 +235,42 @@ class Simulation{
     
     void computeTick(int tick, int microtickCount=0){
         
-        for(int i=0;i< world.entities.length;i++)
+        for(int i=0;i< entities.length;i++)
         {
-            world.entities[i] = updateEntity(tick,world.entities[i]);
-            world.entities[i] = collisionwithWallOccured(world.entities[i]);
+            entities[i] = updateEntity(tick,entities[i]);
+            entities[i] = collisionwithWallOccured(entities[i]);
             
         }
 
         int j=0;
-        while (j<world.entities.length-1)
+        while (j<entities.length-1)
         {
-            for(int i=j+1;i< world.entities.length;i++)
+            for(int i=j+1;i< entities.length;i++)
             {
-                if(isCollisionOccured(world.entities[i], world.entities[j]))
+                if(isCollisionOccured(entities[i], entities[j]))
                 {
-                    double newR = sqrt(world.entities[i].radius*world.entities[i].radius+ 
-                            world.entities[j].radius*world.entities[j].radius);
-                    double newVX = (world.entities[i].radius/newR)*world.entities[i].vx
-                        +(world.entities[j].radius/newR)*world.entities[j].vx;
-                    double newVY = (world.entities[i].radius/newR)*world.entities[i].vy
-                        +(world.entities[j].radius/newR)*world.entities[j].vy;
+                    double newR = sqrt(entities[i].radius*entities[i].radius+ 
+                            entities[j].radius*entities[j].radius);
+                    double newVX = (entities[i].radius/newR)*entities[i].vx
+                        +(entities[j].radius/newR)*entities[j].vx;
+                    double newVY = (entities[i].radius/newR)*entities[i].vy
+                        +(entities[j].radius/newR)*entities[j].vy;
                         
                     
-                    if(world.entities[i].radius>world.entities[j].radius)
+                    if(entities[i].radius>entities[j].radius)
                     {
                             
-                        world.entities[i].radius = newR;
-                        world.entities[i].vx = newVX;
-                        world.entities[i].vy = newVY;
-                        world.entities[j].radius = 0;
+                        entities[i].radius = newR;
+                        entities[i].vx = newVX;
+                        entities[i].vy = newVY;
+                        entities[j].radius = 0;
                     }
                     else
                     {
-                        world.entities[j].radius = newR;
-                        world.entities[j].vx = newVX;
-                        world.entities[j].vy = newVY;
-                        world.entities[i].radius = 0;
+                        entities[j].radius = newR;
+                        entities[j].vx = newVX;
+                        entities[j].vy = newVY;
+                        entities[i].radius = 0;
                     }
                 }
             }
@@ -261,16 +280,20 @@ class Simulation{
 
     void processWaitCommand(int countTick)
     {
-        this.computeTick(countTick);
+        for(int tick = 0;tick<countTick;tick++)
+        {
+           // world.count++;
+            computeTick(tick);
+        }
     }
 
     void processGoCommand(int idEntity, double x, double y ,int countTick)
     {
         Entity me = null;
-        for(int i=0;i< world.entities.length;i++)
+        for(int i=0;i< entities.length;i++)
         {
-            if(idEntity==world.entities[i].id){
-                me = world.entities[i];
+            if(idEntity==entities[i].id){
+                me = entities[i];
                 break;
                 }
         }
@@ -283,7 +306,10 @@ class Simulation{
         me.vy +=200*sin(alfa)/14;
         for(int tick = 0;tick<countTick;tick++)
         {
+            world.count++;
             computeTick(tick);
+                
+           //stderr.writeln(me.to!string);
         }
         
     }
@@ -291,10 +317,10 @@ class Simulation{
     void processGoCommand(int idEntity, double alfa ,int countTick)
     {
         Entity me = null;
-        for(int i=0;i< world.entities.length;i++)
+        for(int i=0;i< entities.length;i++)
         {
-            if(idEntity==world.entities[i].id){
-                me = world.entities[i];
+            if(idEntity==entities[i].id){
+                me = entities[i];
                 break;
             }
         }
@@ -312,10 +338,10 @@ class Simulation{
     double getRadiusById(int idEntity)
     {
         Entity me = null;
-        for(int i=0;i< world.entities.length;i++)
+        for(int i=0;i< entities.length;i++)
         {
-            if(idEntity==world.entities[i].id){
-                me = world.entities[i];
+            if(idEntity==entities[i].id){
+                me = entities[i];
                 break;
             }
         }
@@ -372,13 +398,16 @@ Point Turn(Point from, Point to, double angle)
     return to;
 }
 
+
 void main()
 {
     int playerId = readln.strip.to!int; // your id (0 to 4)
-
+    double lastAngle = -1;
+    
     GameWorld world = new GameWorld(playerId);
     int tick = 0;
     double pi = 3.14159;
+    double[int] lastangles = [-1:0];
     // game loop
     while (1) {
         world.update();
@@ -401,49 +430,69 @@ void main()
         //}
         for (int i = 0; i < world.myChipCount; i++) {
             if(tick == 0 || tick%5==0){
-            Simulation sim = new Simulation(world);
-            stderr.writeln("simul");
-            double[] alfas = new double[8];
-            alfas=[0, pi/4, pi/2, 3*pi/4, pi, 5*pi/4, 3*pi/2, 7*pi/4];
-            Point newTarget = new Point(0,0);
-            double maxRadius =-1; 
-            
-            Entity me = world.myEntities[i];
-            stderr.writeln("current : "~me.radius.to!string);
-            foreach(double alfa; alfas)
-            {
+                stderr.writeln("simul");
+                double[] alfas = new double[8];
+                alfas=[0, PI_4, PI_2, 3*PI_4, PI, 5*PI_4, 3*PI_2, 7*PI_4];
+                Point newTarget = new Point(0,0);
+                double maxRadius =-1; 
+                double maxAlfa = 0;
+                Entity me = world.myEntities[i];
+                double oldRad = me.radius;
+                Point start = new Point(me.x, me.y);
+                stderr.writeln("Me="~me.to!string);
+                foreach(double alfa; alfas)
+                {
                 
-                Point target = Turn(new Point(me.x, me.y), new Point(me.x+me.radius, me.y), alfa);
-                sim.processGoCommand(me.id, target.x, target.y ,10);
-                if(sim.getRadiusById(me.id)>maxRadius)
-                {
-                    maxRadius = sim.getRadiusById(me.id);
-                    newTarget.x = target.x;
-                    newTarget.y = target.y;
-                }
-            }
-            stderr.writeln("progns : "~maxRadius.to!string);
-            //Entity enemy = find(my_entities[i], entities, entityCount);
-            // Write an action using writeln().
-            // To debug: stderr.writeln("Debug messages...");
-
-
-            // One instruction per chip: 2 real numbers (x y) for a propulsion, or 'WAIT'.
-            //writeln(to!string(enemy.x)~to!string(" ")~to!string(enemy.y));
-                if(me.radius>maxRadius)
-                {
-                    sim = new Simulation(world);
-                    sim.processWaitCommand(10);
-                    double anotherMaxRadius =sim.getRadiusById(me.id); 
-                    if(anotherMaxRadius>maxRadius){
-                        writeln("WAIT");
+                
+                
+                    Simulation sim = new Simulation(world);
+                    //stderr.writeln("GW"~sim.world.count.to!string);
+                    Point target = Turn(start, new Point(start.x+oldRad, start.y), alfa);
+                    stderr.writeln("alfa"~alfa.to!string~" target : "~target.x.to!string~"  "~target.y.to!string);
+                    sim.processGoCommand(me.id, target.x, target.y ,15);
+                    if(sim.getRadiusById(me.id)>maxRadius)
+                    {
+                        maxRadius = sim.getRadiusById(me.id);
+                        newTarget.x = target.x;
+                        newTarget.y = target.y;
+                        maxAlfa = alfa;
                     }
-                    else
-                        writeln(newTarget.x.to!string~" "~newTarget.y.to!string);
+
                 }
-                    writeln(newTarget.x.to!string~" "~newTarget.y.to!string);
+                stderr.writeln("Me="~me.to!string);
+                stderr.writeln("progns : "~maxRadius.to!string~" with alfa "~maxAlfa.to!string);
+                //Entity enemy = find(my_entities[i], entities, entityCount);
+                // Write an action using writeln().
+                // To debug: stderr.writeln("Debug messages...");
+    
+    
+                // One instruction per chip: 2 real numbers (x y) for a propulsion, or 'WAIT'.
+                //writeln(to!string(enemy.x)~to!string(" ")~to!string(enemy.y));
+                stderr.writeln("current : "~oldRad.to!string);
+                // if(me.id in lastangles && lastangles[me.id]==maxAlfa)
+                // {
+                //     writeln("WAIT");
+                // }
+                // else{
+                    lastangles[me.id]=maxAlfa;
+                    if(oldRad>maxRadius)
+                    {
+                        stderr.writeln("smth not good");
+                        Simulation sim = new Simulation(world);
+                        sim.processWaitCommand(15);
+                        double anotherMaxRadius =sim.getRadiusById(me.id); 
+                        if(anotherMaxRadius>maxRadius){
+                            writeln("WAIT");
+                        }
+                        else
+                            writeln(newTarget.x.to!string~" "~newTarget.y.to!string);
+                    }
+                    else 
+                        writeln(newTarget.x.to!string~" "~newTarget.y.to!string);
+               // }
             }
             else writeln("WAIT");
+            
         }
         tick++;
     }
